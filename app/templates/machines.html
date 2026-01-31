@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Замена резцов</h2>
+    <p>Текущие установки по станкам и операция замены резца.</p>
+  </div>
+</section>
+
+<div class="machine-grid">
+  {% for machine in machines %}
+    <div class="card">
+      <h3>{{ machine.name }}</h3>
+      <ul class="tool-posts">
+        {% for tool_post in machine.tool_posts|sort(attribute='position') %}
+          {% set installation = current_by_tool_post.get(tool_post.id) %}
+          <li>
+            <div class="tool-post-header">
+              <strong>{{ tool_post.name }}</strong>
+              <span class="muted">Позиция: {{ tool_post.position or '—' }}</span>
+            </div>
+            <div class="tool-post-body">
+              {% if installation %}
+                <p>Резец: <strong>{{ installation.cutter.serial_short }}</strong></p>
+                <p>В работе: {{ days_between(installation.installed_at) }} дн.</p>
+              {% else %}
+                <p class="muted">Резец не установлен.</p>
+              {% endif %}
+            </div>
+            <form method="post" action="{{ url_for('replace_cutter') }}">
+              <input type="hidden" name="tool_post_id" value="{{ tool_post.id }}">
+              <label>
+                Новый резец
+                <select name="cutter_id" required>
+                  <option value="">Выберите резец</option>
+                  {% for cutter in available_cutters %}
+                    <option value="{{ cutter.id }}">{{ cutter.serial_short }} ({{ cutter.status }})</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <button type="submit">Установить</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="muted">Tool post’ов нет.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% else %}
+    <div class="card">
+      <p class="muted">Станки не добавлены.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
