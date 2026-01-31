@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Карточка резца {{ cutter.serial_short }}</h2>
+    <p>{{ cutter.serial_full }}</p>
+  </div>
+  <div>
+    <span class="status-chip">{{ cutter.status }}</span>
+  </div>
+</section>
+
+<div class="detail-grid">
+  <div class="card">
+    <h3>Текущее состояние</h3>
+    <ul>
+      <li><strong>Местонахождение:</strong> {{ location_label(cutter) }}</li>
+      <li><strong>Текущий радиус:</strong> {{ cutter.radius_current }}</li>
+      <li><strong>В эксплуатации с:</strong> {{ cutter.commissioned_at.date() }}</li>
+      <li><strong>Переточек:</strong> {{ cutter.resharpen_count }}</li>
+      {% if cutter.status == 'scrapped' %}
+        <li><strong>Списан:</strong> {{ cutter.scrapped_at.date() if cutter.scrapped_at else '—' }}</li>
+        <li><strong>Причина:</strong> {{ cutter.scrap_reason.name if cutter.scrap_reason else '—' }}</li>
+      {% endif %}
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Добавить переточку</h3>
+    <form method="post" action="{{ url_for('resharpen_cutter', cutter_id=cutter.id) }}">
+      <label>
+        Радиус до
+        <input type="number" step="0.001" name="radius_before" required>
+      </label>
+      <label>
+        Радиус после
+        <input type="number" step="0.001" name="radius_after" required>
+      </label>
+      <label>
+        Комментарий
+        <textarea name="comment" rows="2"></textarea>
+      </label>
+      <button type="submit">Добавить</button>
+    </form>
+  </div>
+</div>
+
+<section class="card">
+  <h3>История переточек</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Радиус до</th>
+        <th>Радиус после</th>
+        <th>Дней между</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for record in resharpenings %}
+      <tr>
+        <td>{{ record.sharpened_at.date() }}</td>
+        <td>{{ record.radius_before }}</td>
+        <td>{{ record.radius_after }}</td>
+        <td>
+          {% if loop.last %}
+            —
+          {% else %}
+            {{ days_between(resharpenings[loop.index].sharpened_at, record.sharpened_at) }}
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="4" class="muted">Переточек пока нет.</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h3>История установок</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Установлен</th>
+        <th>Станок</th>
+        <th>Tool post</th>
+        <th>Снят</th>
+        <th>Дней в работе</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for record in installations %}
+      <tr>
+        <td>{{ record.installed_at.date() }}</td>
+        <td>{{ record.machine.name if record.machine else '—' }}</td>
+        <td>{{ record.tool_post.name if record.tool_post else '—' }}</td>
+        <td>{{ record.removed_at.date() if record.removed_at else '—' }}</td>
+        <td>{{ days_between(record.installed_at, record.removed_at) }}</td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="5" class="muted">Установок пока нет.</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h3>Списание резца</h3>
+  <form method="post" action="{{ url_for('scrap_cutter', cutter_id=cutter.id) }}">
+    <label>
+      Причина списания
+      <input type="text" name="scrap_reason" placeholder="Например, износ">
+    </label>
+    <button type="submit" class="danger">Списать резец</button>
+  </form>
+</section>
+{% endblock %}
